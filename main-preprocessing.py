@@ -21,22 +21,21 @@ import seaborn as sns
 
 # --- Download necessary NLTK data ---
 # This is required for tokenization, stop words, POS tagging, and lemmatization.
-try:
-    nltk.data.find('corpora/stopwords')
-except nltk.downloader.DownloadError:
-    nltk.download('stopwords')
-try:
-    nltk.data.find('tokenizers/punkt')
-except nltk.downloader.DownloadError:
-    nltk.download('punkt')
-try:
-    nltk.data.find('corpora/wordnet')
-except nltk.downloader.DownloadError:
-    nltk.download('wordnet')
-try:
-    nltk.data.find('taggers/averaged_perceptron_tagger')
-except nltk.downloader.DownloadError:
-    nltk.download('averaged_perceptron_tagger')
+# We'll ensure each required resource is checked and downloaded if missing.
+nltk_resources = {
+    'corpora/stopwords': 'stopwords',
+    'tokenizers/punkt': 'punkt',
+    'corpora/wordnet': 'wordnet',
+    'taggers/averaged_perceptron_tagger': 'averaged_perceptron_tagger'
+}
+
+for resource_path, resource_name in nltk_resources.items():
+    try:
+        nltk.data.find(resource_path)
+        print(f"NLTK resource '{resource_name}' found.")
+    except LookupError:
+        print(f"NLTK resource '{resource_name}' not found. Downloading...")
+        nltk.download(resource_name)
 
 # --- Load the dataset ---
 # Assuming 'Tweets.csv' is in the accessible path.
@@ -57,13 +56,11 @@ try:
     elif 'tweet' in df.columns: # from the example in chapter 2
         text_column = 'tweet'
     else:
-        raise ValueError("Could not automatically identify the tweet text column. Please specify it.")
+        raise ValueError("Could not automatically identify the tweet text column. Please specify it in the script.")
     
     print(f"\nUsing column: '{text_column}' for tweet text.\n")
     # For demonstration, let's work with a sample to speed up processing,
     # especially for steps like spelling correction.
-    # Remove .sample() to process the whole dataset.
-    # df_sample = df.sample(min(100, len(df)), random_state=42).copy()
     # For the final script, we'll process a slice or the whole column if it's not too large.
     # Let's take the first 1000 tweets or all if less than 1000
     df_processed = df[[text_column]].copy()
@@ -96,7 +93,16 @@ print(df_processed[['processed_text']].head())
 # If demoji is not available, this step might be skipped or a placeholder shown.
 try:
     import demoji
-    demoji.download_codes() # Needs to be run once
+    # demoji.download_codes() # Needs to be run once if not cached.
+    # It's often better to let it handle caching automatically or call it explicitly if issues persist.
+    # For robustness, we can try to ensure it's downloaded if the first use fails,
+    # but usually, it handles this.
+    try:
+        demoji.replace_with_desc("test", sep="_") # A quick test to trigger download if needed
+    except Exception as e:
+        print(f"Initial demoji check/download triggered: {e}")
+        demoji.download_codes()
+
     print("\nStep 2: Converting Emojis to Text...")
     def convert_emojis_to_text(text):
         return demoji.replace_with_desc(text, sep="_") # e.g., 😂 becomes "face_with_tears_of_joy"
@@ -160,7 +166,8 @@ print(df_processed[['tokens']].head())
 # --- Recipe 3: Stop Words Removal (Chapter 2, Recipe 2-3) ---
 # Removes common words (e.g., "is", "the", "a") that usually don't carry significant meaning.
 print("\nStep 6: Removing Stop Words...")
-stop_words = set(stopwords.words('english'))
+stop_words_list = stopwords.words('english') # It's already a list, convert to set for faster lookups
+stop_words = set(stop_words_list)
 # Add custom stop words if needed, e.g., common words from emoji text if not desired
 # custom_stopwords = ['face', 'smiling', 'eyes']
 # stop_words.update(custom_stopwords)
@@ -180,6 +187,8 @@ lemmatizer = WordNetLemmatizer()
 
 def get_wordnet_pos(word):
     """Map POS tag to first character lemmatize() accepts"""
+    # Ensure averaged_perceptron_tagger is available before calling pos_tag
+    # The download block at the beginning should handle this.
     tag = nltk.pos_tag([word])[0][1][0].upper()
     tag_dict = {"J": wordnet.ADJ,
                 "N": wordnet.NOUN,
@@ -188,7 +197,14 @@ def get_wordnet_pos(word):
     return tag_dict.get(tag, wordnet.NOUN) # Default to noun
 
 def lemmatize_tokens(tokens):
-    return [lemmatizer.lemmatize(word, get_wordnet_pos(word)) for word in tokens]
+    lemmatized = []
+    for word in tokens:
+        try:
+            lemmatized.append(lemmatizer.lemmatize(word, get_wordnet_pos(word)))
+        except Exception as e:
+            # print(f"Could not lemmatize word: {word}. Error: {e}. Using original word.")
+            lemmatized.append(word) # Fallback to original word if lemmatization fails for any reason
+    return lemmatized
 
 df_processed['lemmatized_tokens'] = df_processed['tokens_no_stopwords'].apply(lemmatize_tokens)
 print("Lemmatization example:")
@@ -217,10 +233,14 @@ if all_tokens_lemmatized:
 
     # Plotting the frequency distribution
     plt.figure(figsize=(12, 6))
-    freq_dist.plot(20, title="Top 20 Most Common Words After Preprocessing")
-    plt.show() # This will attempt to display the plot. In some environments, it might save or not show.
-    # plt.savefig("word_frequency_distribution.png") # Option to save the plot
-    # print("Word frequency distribution plot saved as word_frequency_distribution.png")
+    # Check if freq_dist is empty before plotting
+    if freq_dist:
+        freq_dist.plot(20, title="Top 20 Most Common Words After Preprocessing")
+        plt.show() # This will attempt to display the plot. In some environments, it might save or not show.
+        # plt.savefig("word_frequency_distribution.png") # Option to save the plot
+        # print("Word frequency distribution plot saved as word_frequency_distribution.png")
+    else:
+        print("Frequency distribution is empty, cannot plot.")
 else:
     print("No tokens to analyze for word frequency distribution.")
 
