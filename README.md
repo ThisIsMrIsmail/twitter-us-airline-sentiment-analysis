@@ -40,7 +40,7 @@ Contact:
 - Ismail Sherif: ismailsherifwork@gmail.com
 - Ahmed Mahgoub: aed7862@gmail.com
 - Omar Ehab: oehab7683@gmail.com
-- Mina Hany Ibrahim: 
+- Mina Hany Ibrahim: mh6639272@gmail.com
 
 ## Dataset
 
