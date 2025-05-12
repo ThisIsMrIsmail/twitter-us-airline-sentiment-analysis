@@ -22,15 +22,20 @@ Team:
 - Ahmed Mahgoub
 - Mina Hany Ibrahim
 - Omar Ehab
+
 Description: A Natural Language Processing (NLP) project to analyze sentiments of tweets about US airlines.
+
 Installation: [Click Here](#installation)
+
 Models in Project: The project uses 4 types of machine learning and one deep learning model (LSTM or RNN) for different tasks.
 - Random Forest
 - Logistic Regression
 - Support Vector Machine
 - Naive Bayes
 - RNN (LSTM/GRU)
+
 Results The performance should be above 80% and calculate the ROC-Curve, a confusion matrix and (accuracy, precision, Recall and F1-score).
+
 Contact:
 - Ismail Sherif: ismailsherifwork@gmail.com
 - Ahmed Mahgoub: aed7862@gmail.com
